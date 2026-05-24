@@ -6,13 +6,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const username = "dybdeskarphet";
 
     try {
-      const response = await fetch(
-        `https://api.github.com/users/${username}/repos?sort=updated&per_page=100`,
-      );
+      const [reposResponse, colorsResponse] = await Promise.all([
+        fetch(
+          `https://api.github.com/users/${username}/repos?sort=updated&per_page=100`,
+        ),
+        fetch(
+          "https://raw.githubusercontent.com/ozh/github-colors/master/colors.json",
+        ),
+      ]);
 
-      if (!response.ok) throw new Error("Fetch failed");
+      if (!reposResponse.ok || !colorsResponse.ok)
+        throw new Error("Fetch failed");
 
-      let repos = await response.json();
+      let repos = await reposResponse.json();
+      const colors = await colorsResponse.json();
 
       repos = repos
         .filter((repo) => !repo.fork)
@@ -22,27 +29,35 @@ document.addEventListener("DOMContentLoaded", () => {
       container.innerHTML = "";
 
       repos.forEach((repo) => {
-        const media = document.createElement("div");
-        media.className = "media";
-        media.setAttribute(
+        const langColor =
+          repo.language && colors[repo.language]
+            ? colors[repo.language].color
+            : "#888";
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.setAttribute(
           "onclick",
           `window.open('${repo.html_url}', '_blank')`,
         );
-        media.style.cursor = "pointer";
 
-        media.innerHTML = `
-          <div class="media-body">
-            <div class="media-heading">${repo.name}</div>
-            <div class="media-content">
+        card.innerHTML = `
+          <header class="card-header">${repo.name}</header>
+          <div class="card-content">
+            <div class="inner">
               <p>${repo.description || "No description provided."}</p>
-              <div>
-                ${repo.language ? `<span class="label label-info">${repo.language}</span>` : ""}
-                <span class="label label-success">★ ${repo.stargazers_count}</span>
+              <div class="card-footer-labels">
+                ${
+                  repo.language
+                    ? `<span class="label label-border" style="color: ${langColor} !important; border-color: ${langColor} !important;">${repo.language}</span>`
+                    : ""
+                }
+                <span class="label label-warning label-border">★ ${repo.stargazers_count}</span>
               </div>
             </div>
           </div>
         `;
-        container.appendChild(media);
+        container.appendChild(card);
       });
     } catch (error) {
       container.innerHTML =
